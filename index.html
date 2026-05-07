@@ -3,101 +3,104 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Studio | The Black Canvas</title>
+    <title>GENESISTUDIO | Unified Canvas</title>
     <style>
         :root { --accent: #ffffff; --dim: #222222; --bg: #000000; }
         body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: #fff; font-family: 'Courier New', Courier, monospace; overflow: hidden; }
-        #canvas { width: 100vw; height: 100vh; position: relative; cursor: crosshair; }
+        #canvas { width: 100vw; height: 100vh; position: relative; }
         
-        /* The Brain Portal */
         #brain-portal {
             position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            width: 80px; height: 80px; border-radius: 50%;
+            width: 60px; height: 60px; border-radius: 50%;
             background: radial-gradient(circle, #fff 0%, transparent 70%);
-            box-shadow: 0 0 30px #fff; z-index: 100;
+            box-shadow: 0 0 20px #fff; z-index: 100;
             animation: pulse 4s infinite ease-in-out;
         }
 
-        @keyframes pulse { 0%, 100% { opacity: 0.5; transform: translate(-50%, -50%) scale(1); } 
-                           50% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } }
-
-        /* Generic Container Node */
         .node {
-            position: absolute; padding: 15px; min-width: 150px;
-            border: 1px solid var(--dim); background: rgba(10, 10, 10, 0.8);
-            transition: border 0.3s, box-shadow 0.3s; pointer-events: all;
+            position: absolute; padding: 15px; min-width: 200px; max-width: 300px;
+            border: 1px solid var(--dim); background: rgba(5, 5, 5, 0.9);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5); z-index: 10; cursor: move;
         }
-        .node:focus-within { border-color: var(--accent); box-shadow: 0 0 15px rgba(255, 255, 255, 0.2); }
-        .node-header { font-size: 10px; color: #666; margin-bottom: 8px; text-transform: uppercase; letter-spacing: 1px; }
+        .node:focus-within { border-color: var(--accent); }
+        .node-header { font-size: 9px; color: #555; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid #222; padding-bottom: 4px; }
+        .node-content { font-size: 14px; line-height: 1.4; color: #ccc; }
+
+        #ui-layer { position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); width: 90%; max-width: 700px; z-index: 1000; text-align: center; }
+        #main-input { width: 100%; background: #0a0a0a; border: 1px solid var(--dim); color: #fff; padding: 12px 20px; font-size: 16px; outline: none; border-radius: 30px; transition: 0.3s; }
+        #main-input:focus { border-color: var(--accent); box-shadow: 0 0 15px rgba(255,255,255,0.1); }
         
-        /* Input Area */
-        #input-interface {
-            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 80%; max-width: 600px; z-index: 1000;
-        }
-        #main-input {
-            width: 100%; background: none; border: none; border-bottom: 1px solid var(--dim);
-            color: #fff; padding: 10px; font-size: 16px; outline: none; text-align: center;
-        }
-        #main-input:focus { border-bottom-color: var(--accent); }
+        #status { font-size: 10px; color: #444; margin-top: 8px; letter-spacing: 1px; }
+
+        @keyframes pulse { 0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; } 50% { transform: translate(-50%, -50%) scale(1.1); opacity: 0.8; } }
     </style>
 </head>
 <body>
 
     <div id="canvas">
         <div id="brain-portal"></div>
-        <svg id="tethers" style="position:absolute; width:100%; height:100%; pointer-events:none;"></svg>
     </div>
 
-    <div id="input-interface">
-        <input type="text" id="main-input" placeholder="DROP AN IDEA INTO THE BRAIN..." autocomplete="off">
+    <div id="ui-layer">
+        <input type="text" id="main-input" placeholder="COMMAND THE BRAIN..." autocomplete="off">
+        <div id="status">NEURAL LINK: STANDBY</div>
     </div>
 
-    <script>
-        const canvas = document.getElementById('canvas');
-        const mainInput = document.getElementById('main-input');
+    <script type="module">
+        // --- CORE BRAIN LOGIC ---
+        let API_KEY = localStorage.getItem('GENESIS_KEY');
+        if (!API_KEY) {
+            API_KEY = prompt("PLEASE ENTER YOUR GOOGLE AI STUDIO API KEY TO ESTABLISH NEURAL LINK:");
+            if (API_KEY) localStorage.setItem('GENESIS_KEY', API_KEY);
+        }
 
-        // The AI Brain "Arbiter" Logic
-        mainInput.addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                const val = this.value;
-                if (val) {
-                    createNode(val);
-                    this.value = '';
-                }
+        const input = document.getElementById('main-input');
+        const status = document.getElementById('status');
+
+        input.addEventListener('keypress', async (e) => {
+            if (e.key === 'Enter' && input.value) {
+                const cmd = input.value;
+                input.value = '';
+                status.innerText = "THINKING...";
+                await askBrain(cmd);
             }
         });
 
-        function createNode(content) {
+        async function askBrain(promptText) {
+            try {
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: `You are the AI Brain Mentor in GENESISTUDIO. The user says: "${promptText}". 
+                        Respond in JSON format only: {"type": "Node Type", "content": "Your brief architectural advice or content", "action": "create"}` }] }]
+                    })
+                });
+
+                const data = await response.json();
+                const reply = JSON.parse(data.candidates[0].content.parts[0].text);
+                
+                createNode(reply.type, reply.content);
+                status.innerText = "NEURAL LINK: ACTIVE";
+            } catch (err) {
+                console.error(err);
+                status.innerText = "LINK ERROR: CHECK API KEY";
+            }
+        }
+
+        function createNode(type, content) {
             const node = document.createElement('div');
             node.className = 'node';
-            node.style.left = (Math.random() * 60 + 20) + '%';
-            node.style.top = (Math.random() * 60 + 20) + '%';
-            
-            // AI Identification Simulation
-            const type = identifyType(content);
-            
-            node.innerHTML = `
-                <div class="node-header">${type} Container</div>
-                <div class="node-content">${content}</div>
-            `;
-            canvas.appendChild(node);
+            node.style.left = (Math.random() * 50 + 25) + '%';
+            node.style.top = (Math.random() * 50 + 25) + '%';
+            node.innerHTML = `<div class="node-header">${type}</div><div class="node-content">${content}</div>`;
+            document.getElementById('canvas').appendChild(node);
             makeDraggable(node);
         }
 
-        function identifyType(text) {
-            // Simple identification logic to start
-            if (text.length > 50) return "Text";
-            if (text.toLowerCase().includes("img") || text.toLowerCase().includes("look")) return "Image";
-            return "Idea";
-        }
-
         function makeDraggable(el) {
-            let pos1 = 0, pos2 = 0, pos3 = 0, pos4 = 0;
-            el.onmousedown = dragMouseDown;
-            function dragMouseDown(e) { e.preventDefault(); pos3 = e.clientX; pos4 = e.clientY; document.onmouseup = closeDragElement; document.onmousemove = elementDrag; }
-            function elementDrag(e) { e.preventDefault(); pos1 = pos3 - e.clientX; pos2 = pos4 - e.clientY; pos3 = e.clientX; pos4 = e.clientY; el.style.top = (el.offsetTop - pos2) + "px"; el.style.left = (el.offsetLeft - pos1) + "px"; }
-            function closeDragElement() { document.onmouseup = null; document.onmousemove = null; }
+            let p1 = 0, p2 = 0, p3 = 0, p4 = 0;
+            el.onmousedown = (e) => { p3 = e.clientX; p4 = e.clientY; document.onmouseup = () => { document.onmouseup = null; document.onmousemove = null; }; document.onmousemove = (e) => { p1 = p3 - e.clientX; p2 = p4 - e.clientY; p3 = e.clientX; p4 = e.clientY; el.style.top = (el.offsetTop - p2) + "px"; el.style.left = (el.offsetLeft - p1) + "px"; }; };
         }
     </script>
 </body>
