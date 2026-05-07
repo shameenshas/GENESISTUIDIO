@@ -1,76 +1,89 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>GENESISTUDIO | Production Link</title>
+    <title>GENESISTUDIO | Neural Canvas</title>
     <style>
         :root { --accent: #ffffff; --bg: #000; --dim: #222; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: #fff; font-family: monospace; overflow: hidden; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: var(--bg); color: #fff; font-family: 'Courier New', monospace; overflow: hidden; }
+        
         #viewport { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
         #canvas { position: absolute; width: 5000px; height: 5000px; top: 0; left: 0; transform-origin: 0 0; transition: transform 0.1s ease-out; }
         
-        /* Minimalist Portal Outline */
-        #portal {
-            position: absolute; top: 500px; left: 500px; transform: translate(-50%, -50%);
-            width: 70px; height: 70px; border: 1px solid var(--dim); border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
+        /* Settings Button */
+        #settings-btn { position: fixed; top: 20px; right: 20px; cursor: pointer; z-index: 2000; font-size: 20px; opacity: 0.5; transition: 0.3s; }
+        #settings-btn:hover { opacity: 1; transform: rotate(45deg); }
+        
+        /* Settings Overlay */
+        #settings-panel { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.9); display: none; flex-direction: column; 
+            align-items: center; justify-content: center; z-index: 3000; 
         }
-        #portal-inner { width: 20px; height: 20px; border: 1px solid #444; border-radius: 50%; }
-        .thinking #portal-inner { border-color: #fff; box-shadow: 0 0 15px #fff; animation: pulse 1s infinite; }
+        #settings-panel input { background: #111; border: 1px solid #333; color: #fff; padding: 15px; width: 300px; text-align: center; margin-bottom: 10px; }
 
-        /* Project Container */
+        #portal { position: absolute; top: 500px; left: 500px; transform: translate(-50%, -50%); width: 70px; height: 70px; border: 1px solid var(--dim); border-radius: 50%; }
+        .thinking #portal { border-color: #fff; box-shadow: 0 0 20px #fff; animation: pulse 1s infinite; }
+
         #main-node {
-            position: absolute; top: 400px; left: 650px; width: 350px;
-            border: 1px solid var(--dim); background: rgba(5,5,5,0.9); padding: 25px;
-            cursor: move; z-index: 100; transition: 0.3s;
+            position: absolute; top: 400px; left: 650px; width: 380px;
+            border: 1px solid var(--dim); background: rgba(5,5,5,0.95); padding: 30px;
+            cursor: move; z-index: 100;
         }
-        .zoomed-out #main-node { width: 160px; height: 35px; padding: 5px; border-color: #555; overflow: hidden; }
-        .zoomed-out .content { display: none; }
-        .label { font-size: 11px; color: #fff; text-align: center; display: none; margin-top: 10px; }
-        .zoomed-out .label { display: block; }
 
-        /* UI */
-        #ui { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); width: 80%; text-align: center; }
-        #input { background: none; border: none; border-bottom: 1px solid var(--dim); color: #fff; width: 100%; text-align: center; padding: 10px; outline: none; font-size: 16px; }
-        #status { font-size: 9px; color: #444; margin-top: 10px; letter-spacing: 2px; }
-
-        @keyframes pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 1; } }
+        #ui { position: fixed; bottom: 50px; left: 50%; transform: translateX(-50%); width: 70%; text-align: center; }
+        #input { background: none; border: none; border-bottom: 1px solid var(--dim); color: #fff; width: 100%; text-align: center; padding: 12px; outline: none; font-size: 18px; }
+        @keyframes pulse { 0% { opacity: 0.4; } 50% { opacity: 1; } 100% { opacity: 0.4; } }
     </style>
 </head>
 <body>
 
+<div id="settings-btn">⚙</div>
+
+<div id="settings-panel">
+    <h2 style="letter-spacing: 5px;">NEURAL CONFIG</h2>
+    <input type="text" id="api-input" placeholder="PASTE GEMINI API KEY">
+    <button onclick="saveKey()" style="background:none; border: 1px solid #fff; color:#fff; padding: 10px 20px; cursor:pointer;">SAVE KEY</button>
+    <p style="font-size: 10px; color:#555; margin-top:20px;">CLICK GEAR TO EXIT</p>
+</div>
+
 <div id="viewport">
     <div id="canvas">
-        <div id="portal"><div id="portal-inner"></div></div>
+        <div id="portal"></div>
         <div id="main-node">
-            <div class="label">PROJECT: RABBIT SEED</div>
-            <div style="font-size: 9px; color: #555; margin-bottom: 10px;">PRIMARY CONTAINER</div>
-            <div id="display" class="content" style="font-size: 14px; color: #ccc; line-height: 1.5;">Neural Link Standby. Enter your first command below.</div>
+            <div id="display" style="font-size: 14px; color: #bbb; line-height: 1.6;">Awaiting input...</div>
         </div>
     </div>
 </div>
 
 <div id="ui">
-    <input type="text" id="input" placeholder="COMMAND THE BRAIN..." autocomplete="off">
-    <div id="status">LINK STATUS: READY</div>
+    <input type="text" id="input" placeholder="INITIATE COMMAND..." autocomplete="off">
 </div>
 
 <script>
-    const key = localStorage.getItem('GENESIS_KEY') || prompt("PASTE API KEY:");
-    if(key) localStorage.setItem('GENESIS_KEY', key.trim());
+    let API_KEY = localStorage.getItem('GENESIS_KEY') || "";
 
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsPanel = document.getElementById('settings-panel');
+    const apiInput = document.getElementById('api-input');
+    const display = document.getElementById('display');
     const canvas = document.getElementById('canvas');
     const node = document.getElementById('main-node');
-    const display = document.getElementById('display');
-    const status = document.getElementById('status');
-    const portal = document.getElementById('portal');
-    let zoom = 1;
+
+    // UI Controls
+    settingsBtn.onclick = () => settingsPanel.style.display = settingsPanel.style.display === 'flex' ? 'none' : 'flex';
+    function saveKey() {
+        API_KEY = apiInput.value.trim();
+        localStorage.setItem('GENESIS_KEY', API_KEY);
+        settingsPanel.style.display = 'none';
+        display.innerText = "Key Updated. Ready to sync.";
+    }
 
     // Zoom Logic
+    let zoom = 1;
     window.addEventListener('wheel', (e) => {
         zoom -= e.deltaY * 0.001;
         zoom = Math.min(Math.max(0.2, zoom), 2);
         canvas.style.transform = `scale(${zoom})`;
-        document.body.classList.toggle('zoomed-out', zoom < 0.6);
     });
 
     // Drag Logic
@@ -79,34 +92,29 @@
     window.onmousemove = (e) => { if(drag) { node.style.left = (e.clientX - ox) + 'px'; node.style.top = (e.clientY - oy) + 'px'; } };
     window.onmouseup = () => drag = false;
 
-    // Production-Ready Brain Link
+    // AI Communication
     document.getElementById('input').onkeypress = async (e) => {
         if (e.key === 'Enter') {
             const val = e.target.value; e.target.value = '';
-            status.innerText = "PROCESSING...";
-            portal.classList.add('thinking');
+            document.body.classList.add('thinking');
+            display.innerText = "Processing...";
 
             try {
-                // Using the v1 (Stable) Endpoint
-                const res = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${key}`, {
+                // Pointing to Gemini 2.5 Flash
+                const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${API_KEY}`, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ contents: [{ parts: [{ text: val }] }] })
                 });
 
                 const data = await res.json();
+                if (data.error) throw new Error(data.error.message);
                 
-                if (data.error) {
-                    display.innerHTML = `<span style="color:red">API ERROR:</span><br>${data.error.message}`;
-                    status.innerText = "LINK FAILED";
-                } else {
-                    display.innerText = data.candidates[0].content.parts[0].text;
-                    status.innerText = "NEURAL LINK: ACTIVE";
-                }
+                display.innerText = data.candidates[0].content.parts[0].text;
             } catch (err) {
-                display.innerText = "BROWSER ERROR: " + err.message;
+                display.innerHTML = `<span style="color:red">ERROR:</span><br>${err.message}`;
             } finally {
-                portal.classList.remove('thinking');
+                document.body.classList.remove('thinking');
             }
         }
     };
